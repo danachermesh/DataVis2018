@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>JS Bin</title>
+<style id="jsbin-css">
+.title {
+  font-family: Helvetica;
+  font-size: 20px;
+  fill: black;
+  text-anchor: middle;
+}
+
+.legend--frame {
+  stroke: black;
+  fill: lightgray;
+}
+
+.legend--item--box {
+  stroke: black;
+  fill: none;
+}
+
+.legend--item--label {
+  font-family: Helvetica;
+  font-size: 14px;
+  fill: black;
+  alignment-baseline: central;
+}
+
+.label {
+  fill: black;
+  font-family: Helvetica;
+  font-size: 14px;
+  text-anchor: middle;
+}
+
+.mark {
+  fill: steelBlue;
+  stroke: black;
+}
+
+.x-axis path {
+  ;
+}
+</style>
+</head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.3/d3.min.js"></script>
+<body>
+<div id="chart">
+  <svg width="500" height="500">
+  </svg>
+</div>
+<script id="jsbin-javascript">
+// calling csv 
+d3.csv("https://raw.githubusercontent.com/danachermesh/DataVis2018/master/HW2/DOB_Permit_Issuance.csv", function (DOB) {
+ 
+  var data = DOB;
+
+   createPlot(data);
+});
+
+
+function createPlot(data) {
+  var canvasSize = [500, 500];
+  var tickSize = 5;
+  var pArea = [50, 50, 390, 360];
+  var maxValue = d3.max(data, (function(d) {  return d.DMpermits_total;}));
+
+  
+  
+// // from lab2
+//   var x = d3.scaleLinear()
+//     .domain([2008, 2012])
+//     .rangeRound([pArea[0], pArea[2]]);
+
+
+
+  var svg = d3.select("svg");
+  var g = svg.append("g");
+
+    // selecting cuisine type from json
+  var x = d3.scaleBand()
+   .domain(data.map (d => d.year))
+   .rangeRound([pArea[0], pArea[2]]);
+  
+    var y = d3.scaleLinear()
+    .domain([0, maxValue])
+    .rangeRound([pArea[3], pArea[1]]);
+  
+//     g.append("g")
+//     .attr("class", "xaxis")
+//     .attr("transform", "translate(150,0)")
+//     .call(d3.axisLeft(x))
+//     .append("text");
+  
+  
+// title
+  g.append("text")
+    .attr("class", "title")
+    .attr("x", (x.range()[0]+x.range()[1])*0.5)
+    .attr("y", 30)
+    .text("DOB Demolishment Permits  2008-2012");
+
+
+// Axes
+ g.append("g")
+    .attr("class", "axis axis--x")
+    .attr("transform", `translate(0,${pArea[3]})`)
+    .call(d3.axisBottom(x).ticks(5))
+    .append("text")
+      .attr("class", "label")
+      .attr("x", (x.range()[0]+x.range()[1])*0.5)
+      .attr("y", 35)
+      .text("Year");
+
+
+  g.append("g")
+    .attr("class", "axis axis--y")
+    .attr("transform", `translate(${pArea[0]},0)`)
+    .call(d3.axisLeft(y).ticks(5))
+    .append("text")
+      .attr("class", "label")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -(y.range()[0]+y.range()[1])*0.5)
+      .attr("y", -40)
+      .text("No. of DM permits issued");
+
+  
+    // scale
+  var h = d3.scaleLinear()
+  .domain([0, maxValue])
+  .rangeRound([0,280]);
+  
+  
+   g.selectAll(".mark")
+    .data(data)
+    .enter() 
+   // --> return a list of [data records] without visual
+          // then apply a forEach on this list where wach append a rectangle
+          // we than manipulate this rectangle
+  .append('rect')
+    .attr('class', 'mark')
+    .attr('x', function(d,i) {return x(d.year)+10;})
+    .attr('y', d => pArea[3]-h(d.DMpermits_total))
+    .attr('height', function(d) {return h(d.DMpermits_total);})
+    .attr('width', x.bandwidth()-20)
+   
+   
+  }
+</body>
+</html>
