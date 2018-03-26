@@ -1,0 +1,242 @@
+// Define URLs for our zipcode shapes, and restaurant data
+var ZIPCODE_URL = "https://raw.githubusercontent.com/hvo/datasets/master/nyc_zip.geojson";
+var RES_BY_CUISINE_URL = "https://raw.githubusercontent.com/hvo/datasets/master/nyc_restaurants_by_cuisine.json";
+
+d3.queue()
+  .defer(d3.json, ZIPCODE_URL)
+  .defer(d3.json, RES_BY_CUISINE_URL)
+  .await(createChart);
+
+function createChart(error, zipcodes, byCuisine) {
+  // Lab02 bar chart
+  var data = byCuisine.map(function (row) {
+  return([row.cuisine, row.total]);
+}).slice(0,25); // only top 25 ciusines
+  
+  var maxValue = d3.max(data, (function(d) {return d[1];}))
+
+  var svg = d3.select("svg");
+
+  var g = svg.append("g");
+  
+ 
+    // legend title update
+  var mytext = g.append("text") 
+    .attr("class", "label")
+    .attr("x", 640)
+    .attr("y", 30)
+    .attr("font-weight", "bold");
+  
+  
+  // color bar
+  var gLeg = g.append("g");
+  
+    var glabel = gLeg.append("g")
+    .attr("class", "x-axis-bottom")
+    .attr("transform", "translate(0,40)")
+    
+  // scale
+  var w = d3.scaleLinear()
+  .domain([0, maxValue])
+  .rangeRound([0,280]);
+
+  // selecting cuisine type from json
+  var yb = d3.scaleBand()
+   .domain(data.map(function(d) {return d[0];}))
+   .rangeRound([30, 650]);
+  
+  // creating tooltip
+  // 'select' goes through the html
+  // 'append' adds the new element to the html place we related to
+  var tooltip = d3.select("body") // "body" is a part of the html
+    .append("div") // div can hold html content
+    .attr("class", "tooltip")
+  
+  // bar chart along y axis
+  g.append("g")
+    .attr("class", "yaxis")
+    .attr("transform", "translate(150,0)")
+    .call(d3.axisLeft(yb))
+    .append("text");
+  
+  // setting xAxis top+bottom
+  var xAxis = d3.axisTop()
+                .scale(w)
+                .ticks(5);
+  g.append("g")
+    .attr("class", "x-axis")
+    .attr("transform", "translate(160,40)")
+    .call(xAxis)
+  
+    var xAxisBottom = d3.axisBottom()
+                .scale(w)
+                .ticks(5)
+                .tickSize(-610);
+    g.append("g")
+    .attr("class", "x-axis-bottom grey")
+    .attr("transform", "translate(160,650)")
+    .call(xAxisBottom)
+     .append("text")
+      .attr("class", "label")
+      .attr("x", 150)
+      .attr("y", 35)
+      .text("Number of Resturants")
+  
+
+  
+  // yAxis bars total resturants by cusine + mousehovers and clicks
+  g.selectAll(".mark")
+    .data(data)
+    .enter() // --> return a list of [data records] without visual
+          // then apply a forEach on this list where wach append a rectangle
+          // we than manipulate this rectangle
+  .append('rect')
+    .attr('class', 'mark')
+    .attr('x', 160)
+    .attr('y', function(d,i) {return yb(d[0])+3;})
+    .attr('width', function(row,idx) {return w(row[1]);})
+    .attr('height', yb.bandwidth()-3.5)
+    //var colorbyCuisine = g.selectAll
+    // hover (css) = mouseover (JS)
+    // we'll increase the size of the bar on mouseover
+    .on("mouseover", function (d,i) {
+    d3.select(this) // inside the function, select myself
+      .transition().duration(150) // .ease(d3.easeBounce)
+      .attr('x', 150)
+      .attr('y', function(d,i) {return yb(d[0]);})
+      .attr('width', function(row,idx) {return w(row[1])+10;})
+      .attr('height', yb.bandwidth()+3.5)
+    tooltip.text(d[1]);
+    createMap(byCuisine[i]);
+    return tooltip.style("visibility", "visible"); // making it visible
+    
+  })
+    .on("mousemove", function (d){
+     return tooltip
+      .style("top", d3.event.pageY+10 + "px")
+      .style("left", d3.event.pageX+20 + "px")
+     })
+    .on("mouseout", function (d) {
+      d3.select(this) // inside the function, select myself
+      .transition().duration(250)
+       .attr('x', 160)
+      .attr('y', function(d,i) {return yb(d[0])+3;})
+      .attr('width', function(row,idx) {return w(row[1]);})
+      .attr('height', yb.bandwidth()-3.5)
+    return tooltip.style("visibility", "hidden")
+      
+ 
+  })
+
+  
+function createMap(dt) {
+  // Lab06 mapping
+  var svg        = d3.select("svg"),
+      gMap       = svg.append("g"),
+      canvasSize = [1650, 675],
+      
+      // We create Mercator projection that zoom to level, e.g., 10.66, with a center
+      // in Finacial District (lat: 40.7, lon: -73.975). Note that we need to add
+      // 5.34 to the zoom level due to the default Mercator map to [0,2*PI] instead of
+      // [0,256] in WebMercator: log2(256/(2*PI)) ~ 5.34.
+      projection = d3.geoMercator()
+                     .scale(Math.pow(2, 10.66 + 5.34))
+                     .center([-73.975,40.7])
+                     .translate([canvasSize[0]/2, canvasSize[1]/2]),
+      
+      // We create a path generator (which can take a set of points to generate a path)
+      // using the created projection.
+      path       = d3.geoPath()
+                     .projection(projection);
+
+  
+  // creating a path for each (new) zipcode shape
+  gMap.selectAll(".zipcode")
+    .data(zipcodes.features)
+    .enter().append("path")
+      .attr("class", "zipcode")
+      .attr("d", path);
+  
+  // mapping shapes to appropriate colors by cuisine
+  //.on("mouseover", function (d) {
+  var counts   = dt.perZip,
+      data     = Object.entries(counts),      // convert counts to a list
+      maxCount = d3.max(data, d => d[1]),     // get the max count d3.max(data, (function(d) {return d[1];}))
+      color    = d3.scaleThreshold()          // then create a scale with 5 periods
+                   .domain(d3.range(0, maxCount, maxCount/5))
+                   .range(d3.schemeBlues[5]); // using 5 shades of blue
+  
+      // legend color bar 
+//     // 1. color bar
+var xl = d3.scaleLinear()
+    .domain([0, dt.total])
+    .rangeRound([530, 810]);
+  
+//   // notwe for prof: I tries here to add the 5 colors colorbar , no success :/
+var colorlegend = d3.scaleThreshold()
+    .domain(d3.range(0, dt.total, dt.total/5))
+    .range(d3.schemeBlues[5]);
+  //console.log(colorlegend.range());
+
+  gLeg.selectAll("rect")
+  .data(colorlegend.range().map(function(d) {
+      d = colorlegend.invertExtent(d);
+      if (d[0] == null) d[0] = xl.domain()[0];
+      if (d[1] == null) d[1] = xl.domain()[1];
+      return d;
+    })) // .style("fill", d => colorlegend(d[1]));
+  .enter().append("rect")
+    .attr("height", 8)
+    .attr("y", 40)
+    .attr("x", function(d) { return xl(d[0]); })
+    .attr("width", function(d) { return xl(d[1]) - xl(d[0]); })
+    .attr("fill", function(d) { return colorlegend(d[0]); });
+  
+ 
+  // 2. Axis
+    var legendAxis = d3.axisBottom(xl)
+                .ticks(5)
+                .tickSize(10,0)
+                .tickValues(colorlegend.domain());
+
+  glabel.call(legendAxis)
+  
+ 
+  mytext.text("Number of " + dt.cuisine +  " Resturants")
+     ;
+  
+  
+  // We update all elements of the 'zipcode' class
+  gMap.selectAll(".zipcode")
+      .data(data, myKey) // we must join data and visual elements using the right keys
+      .style("fill", d => color(d[1]));
+
+  
+var x = d3.scaleLinear()
+    .domain([1, 5])
+    .rangeRound([600, 860]);
+
+
+  
+}
+
+ // creating a default map >> American cuisine
+  createMap(byCuisine[0])
+  
+}
+
+/*
+Using this myKey function, we would like to map data with the existing zip code data.
+This function must return the key, aka. zipcode, for both the byCuisine data, and the
+zipcode shapes.
+We know that for zipcode shapes, the zipcode info is stored in the properties.zipcode 
+element of each item. For the byCuisine data, the zipcode is stored in the first item
+of each tuple. Thus, we would like:
+    myKey(data[0]) to return data[0][0]
+and
+    myKey(zipcodes.features[0]) to return zipcodes.features[0].properties.zipcode
+NOTE: data and zipcodes are expected to be variables in the previous function.
+*/
+function myKey(d) {
+  return (d[0]?d[0]:d.properties.zipcode);
+}
