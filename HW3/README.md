@@ -15,6 +15,7 @@ Both relevant files are found in this GitHub repo:
 The [Ipython notebook](https://github.com/danachermesh/DataVis2018/blob/master/HW3/dcr346_datavis_HW3.ipynb) which in the code of the functions was developed is found in this repo as well.
 
 The public link to my app, generated via _pythonanywhere_:
-danachermesh.pythonanywhere.com 
+
+[danachermesh.pythonanywhere.com](danachermesh.pythonanywhere.com)
 
 
